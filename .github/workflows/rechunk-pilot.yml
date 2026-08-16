@@ -1,0 +1,39 @@
+name: rechunk-pilot
+# Plan 2.7 (ruling Q2): split >10k-char chunks with paragraph anchoring, swap FTS rows.
+# Old chunk table frozen; new rows -> books_text_chunks_v2 + chunk_lineage (migration 060).
+# Manual dispatch only. Default TEXT_IDS = the 3 pilot books.
+on:
+  workflow_dispatch:
+    inputs:
+      text_ids:
+        description: comma-separated text_ids
+        default: "t_ca4f83dd66,t_e837aa54ba,t_b5cecbd9c8"
+      split_batch:
+        description: lineage batch tag
+        default: "pilot-3"
+concurrency:
+  group: rechunk-pilot
+  cancel-in-progress: false
+jobs:
+  rechunk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: deps
+        run: pip install --quiet requests boto3 opencc-python-reimplemented
+      - name: rechunk
+        env:
+          GY_CF_ACCOUNT: ${{ secrets.GY_CF_ACCOUNT }}
+          GY_D1_TOKEN: ${{ secrets.GY_D1_TOKEN }}
+          D1_DB: "2db89d3b-e988-4577-a9e3-fb7c563af72f"
+          GY_R2_ENDPOINT: ${{ secrets.GY_R2_ENDPOINT }}
+          GY_R2_AK: ${{ secrets.GY_R2_AK }}
+          GY_R2_SK: ${{ secrets.GY_R2_SK }}
+          GY_R2_BUCKET: ${{ secrets.GY_R2_BUCKET }}
+          TEXT_IDS: ${{ github.event.inputs.text_ids }}
+          SPLIT_BATCH: ${{ github.event.inputs.split_batch }}
+        run: python scripts/rechunk_pilot.py
