@@ -182,12 +182,14 @@ def main():
                 ids = ",".join(str(x) for x in del_rids[i:i+80])
                 d1(f"DELETE FROM books_fts_v2 WHERE rowid IN ({ids})")
                 d1(f"DELETE FROM books_fts_v2_src WHERE rowid IN ({ids})")
-            for i in range(0, len(src_vals), 8):
-                chunk = src_vals[i:i+8]
+            # SQLITE_TOOBIG lesson (first pilot run): bigram text ~5x source bytes, so
+            # 8 rows/statement blew D1's statement size cap. src: 4 rows; fts: 1 row.
+            for i in range(0, len(src_vals), 4):
+                chunk = src_vals[i:i+4]
                 d1("INSERT OR REPLACE INTO books_fts_v2_src (rowid,chunk_id,part_no,text_id,vol_no,body_raw) VALUES "
                    + ",".join(f"({rw},'{esc(cid)}',{pn},'{esc(t)}',{vn},'{esc(body)}')" for rw, cid, pn, t, vn, body in chunk))
-                d1("INSERT OR REPLACE INTO books_fts_v2 (rowid, body_bi) VALUES "
-                   + ",".join(f"({rw},'{esc(bigrams(body))}')" for rw, cid, pn, t, vn, body in chunk))
+            for rw, cid, pn, t, vn, body in src_vals:
+                d1(f"INSERT OR REPLACE INTO books_fts_v2 (rowid, body_bi) VALUES ({rw},'{esc(bigrams(body))}')")
             print(f"  vol {vol_no}: swapped {len(del_rids)} old FTS rows -> {len(src_vals)} sub rows")
     print(f"DONE split_chunks={tot_split} sub_chunks={tot_sub}")
 
