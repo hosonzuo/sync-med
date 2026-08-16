@@ -1,0 +1,26 @@
+name: kb-herb-edges
+# KB aggregation 2b: formula->herb weighted edges onto controlled registry.
+# Additive: writes only kb_formula_herbs / kb_herbs.formula_count / kb_formulas.display_name.
+# Manual dispatch only (no cron) — one-shot aggregation pass, rerun-safe.
+on:
+  workflow_dispatch: {}
+concurrency:
+  group: kb-herb-edges
+  cancel-in-progress: false
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: deps
+        run: pip install --quiet requests opencc-python-reimplemented
+      - name: aggregate
+        env:
+          GY_CF_ACCOUNT: ${{ secrets.GY_CF_ACCOUNT }}
+          GY_D1_TOKEN: ${{ secrets.GY_D1_TOKEN }}
+          D1_DB: "2db89d3b-e988-4577-a9e3-fb7c563af72f"
+        run: python scripts/kb_herb_edges.py
